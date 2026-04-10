@@ -1,0 +1,172 @@
+{% comment %}
+  Wishlist Header Icon - App Embed Block
+  Adds a wishlist heart icon to the store header (next to cart).
+  Shows badge with item count.
+{% endcomment %}
+
+{% if block.settings.enabled %}
+<div id="wl-header-icon" style="display:none">
+  <a href="/apps/wishlist/page" class="wl-header-link" aria-label="View wishlist">
+    <svg class="wl-header-svg" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      {% if block.settings.icon_style == "heart" %}
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+      {% elsif block.settings.icon_style == "bookmark" %}
+        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+      {% elsif block.settings.icon_style == "star" %}
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+      {% endif %}
+    </svg>
+    <span class="wl-header-badge" id="wl-header-badge" style="display:none">0</span>
+  </a>
+</div>
+
+<style>
+  #wl-header-icon {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 9999;
+  }
+
+  .wl-header-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .wl-header-link:hover {
+    color: {{ block.settings.active_color }};
+  }
+
+  .wl-header-svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .wl-header-badge {
+    position: absolute;
+    top: 4px;
+    right: 2px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: {{ block.settings.active_color }};
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+</style>
+
+<script>
+  (function() {
+    var shop = "{{ shop.permanent_domain }}";
+    var proxyUrl = "{{ shop.url }}/apps/wishlist";
+    var customerId = "{{ customer.id }}" || localStorage.getItem("wishlist_guest_id");
+
+    // Position the icon next to the cart icon in the header
+    function positionIcon() {
+      var iconEl = document.getElementById("wl-header-icon");
+      // Try to find common cart icon selectors
+      var cartSelectors = [
+        '.header__icon--cart',
+        '[href="/cart"]',
+        '.cart-icon-bubble',
+        '.site-header__cart',
+        '.header-cart-btn',
+        'a[href="/cart"]',
+        '.cart-count-bubble',
+        '.header__cart',
+      ];
+
+      var cartIcon = null;
+      for (var i = 0; i < cartSelectors.length; i++) {
+        cartIcon = document.querySelector(cartSelectors[i]);
+        if (cartIcon) break;
+      }
+
+      if (cartIcon) {
+        // Insert before the cart icon
+        iconEl.style.position = "relative";
+        iconEl.style.display = "inline-flex";
+        cartIcon.parentNode.insertBefore(iconEl, cartIcon);
+      } else {
+        // Fallback: show as fixed icon in top right
+        iconEl.style.position = "fixed";
+        iconEl.style.top = "12px";
+        iconEl.style.right = "60px";
+        iconEl.style.display = "flex";
+        iconEl.style.zIndex = "9999";
+      }
+    }
+
+    // Fetch wishlist count
+    function updateBadge() {
+      if (!customerId) return;
+
+      fetch(proxyUrl + "/api/wishlist?shop=" + encodeURIComponent(shop) + "&customerId=" + encodeURIComponent(customerId) + "&action=count")
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          var badge = document.getElementById("wl-header-badge");
+          if (data.count > 0) {
+            badge.textContent = data.count > 99 ? "99+" : data.count;
+            badge.style.display = "block";
+          }
+        })
+        .catch(function() {});
+    }
+
+    // Initialize
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", function() {
+        positionIcon();
+        updateBadge();
+      });
+    } else {
+      positionIcon();
+      updateBadge();
+    }
+  })();
+</script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Wishlist Icon (Header)",
+  "target": "head",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "enabled",
+      "label": "Enable wishlist icon in header",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "icon_style",
+      "label": "Icon style",
+      "options": [
+        { "value": "heart", "label": "Heart" },
+        { "value": "bookmark", "label": "Bookmark" },
+        { "value": "star", "label": "Star" }
+      ],
+      "default": "heart"
+    },
+    {
+      "type": "color",
+      "id": "active_color",
+      "label": "Badge color",
+      "default": "#e74c6f"
+    }
+  ]
+}
+{% endschema %}

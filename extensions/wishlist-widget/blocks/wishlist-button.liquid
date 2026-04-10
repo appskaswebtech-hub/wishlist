@@ -1,0 +1,231 @@
+{% comment %}
+  Wishlist Button - Product Page Block
+  Heart icon button with toggle for add/remove.
+  Works for both logged-in customers and guests.
+{% endcomment %}
+
+<div
+  id="wishlist-btn-wrapper-{{ product.id }}"
+  class="wl-btn-wrapper"
+  data-product-id="{{ product.id }}"
+  data-variant-id="{{ product.selected_or_first_available_variant.id }}"
+  data-customer-id="{{ customer.id | default: '' }}"
+  data-shop="{{ shop.permanent_domain }}"
+  data-proxy-url="{{ shop.url }}/apps/wishlist"
+>
+  {% if block.settings.button_style == "icon_only" %}
+    <button class="wl-btn wl-btn--icon" aria-label="Add to wishlist" type="button">
+      <svg class="wl-btn-svg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+      </svg>
+    </button>
+  {% else %}
+    <button class="wl-btn wl-btn--full" aria-label="Add to wishlist" type="button">
+      <svg class="wl-btn-svg" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+      </svg>
+      <span class="wl-btn-text">Add to Wishlist</span>
+    </button>
+  {% endif %}
+</div>
+
+<style>
+  .wl-btn-wrapper {
+    --wl-active: {{ block.settings.active_color }};
+  }
+
+  .wl-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    position: relative;
+  }
+
+  /* ─── Full button style ─── */
+  .wl-btn--full {
+    padding: 11px 24px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 8px;
+    color: #374151;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    width: 100%;
+  }
+  .wl-btn--full:hover {
+    border-color: var(--wl-active);
+    color: var(--wl-active);
+  }
+  .wl-btn--full.active {
+    background: color-mix(in srgb, var(--wl-active) 8%, transparent);
+    border-color: var(--wl-active);
+    color: var(--wl-active);
+  }
+
+  /* ─── Icon only style ─── */
+  .wl-btn--icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    color: #9ca3af;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+  }
+  .wl-btn--icon:hover {
+    color: var(--wl-active);
+    border-color: var(--wl-active);
+    background: color-mix(in srgb, var(--wl-active) 6%, white);
+  }
+  .wl-btn--icon.active {
+    color: var(--wl-active);
+    background: color-mix(in srgb, var(--wl-active) 10%, white);
+    border-color: var(--wl-active);
+  }
+
+  /* ─── Shared ─── */
+  .wl-btn.active .wl-btn-svg {
+    fill: var(--wl-active);
+    stroke: var(--wl-active);
+  }
+
+  .wl-btn.loading {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  .wl-btn-svg {
+    transition: fill 0.2s, stroke 0.2s, transform 0.2s;
+    flex-shrink: 0;
+  }
+
+  .wl-btn.active .wl-btn-svg {
+    animation: wl-pop 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes wl-pop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+  }
+</style>
+
+<script>
+  (function() {
+    var wrappers = document.querySelectorAll(".wl-btn-wrapper");
+
+    wrappers.forEach(function(wrapper) {
+      if (wrapper.dataset.initialized) return;
+      wrapper.dataset.initialized = "true";
+
+      var btn = wrapper.querySelector(".wl-btn");
+      var textEl = wrapper.querySelector(".wl-btn-text");
+      var productId = wrapper.dataset.productId;
+      var variantId = wrapper.dataset.variantId;
+      var shop = wrapper.dataset.shop;
+      var proxyUrl = wrapper.dataset.proxyUrl;
+      var customerId = wrapper.dataset.customerId;
+      var isGuest = false;
+      var isActive = false;
+
+      var GUEST_KEY = "wishlist_guest_id";
+
+      function getGuestId() {
+        var id = localStorage.getItem(GUEST_KEY);
+        if (!id) {
+          id = "guest_" + crypto.randomUUID();
+          localStorage.setItem(GUEST_KEY, id);
+        }
+        return id;
+      }
+
+      if (!customerId) {
+        customerId = getGuestId();
+        isGuest = true;
+      } else {
+        var guestId = localStorage.getItem(GUEST_KEY);
+        if (guestId) {
+          fetch(proxyUrl + "/api/wishlist", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ shop: shop, customerId: customerId, guestId: guestId, action: "merge" })
+          }).then(function() { localStorage.removeItem(GUEST_KEY); });
+        }
+      }
+
+      function setActive(active) {
+        isActive = active;
+        btn.classList.toggle("active", active);
+        if (textEl) textEl.textContent = active ? "In Wishlist" : "Add to Wishlist";
+        btn.setAttribute("aria-label", active ? "Remove from wishlist" : "Add to wishlist");
+      }
+
+      // Check initial state
+      fetch(proxyUrl + "/api/wishlist?shop=" + encodeURIComponent(shop) + "&customerId=" + encodeURIComponent(customerId) + "&productId=" + encodeURIComponent(productId) + "&action=check")
+        .then(function(r) { return r.json(); })
+        .then(function(data) { if (data.inWishlist) setActive(true); })
+        .catch(function() {});
+
+      btn.addEventListener("click", function() {
+        btn.classList.add("loading");
+        var action = isActive ? "remove" : "add";
+        setActive(!isActive);
+
+        fetch(proxyUrl + "/api/wishlist", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            shop: shop,
+            customerId: customerId,
+            productId: productId,
+            variantId: variantId,
+            action: action
+          })
+        })
+        .then(function(res) {
+          if (!res.ok) setActive(isActive);
+          // Update header badge count
+          var badge = document.getElementById("wl-header-badge");
+          if (badge) {
+            var current = parseInt(badge.textContent) || 0;
+            var newCount = action === "add" ? current + 1 : Math.max(0, current - 1);
+            badge.textContent = newCount;
+            badge.style.display = newCount > 0 ? "block" : "none";
+          }
+        })
+        .catch(function() { setActive(isActive); })
+        .finally(function() { btn.classList.remove("loading"); });
+      });
+    });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Wishlist Button",
+  "target": "section",
+  "settings": [
+    {
+      "type": "color",
+      "id": "active_color",
+      "label": "Active color",
+      "default": "#e74c6f"
+    },
+    {
+      "type": "select",
+      "id": "button_style",
+      "label": "Button style",
+      "options": [
+        { "value": "outlined", "label": "Full button" },
+        { "value": "icon_only", "label": "Icon only" }
+      ],
+      "default": "outlined"
+    }
+  ]
+}
+{% endschema %}
