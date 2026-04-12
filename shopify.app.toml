@@ -2,7 +2,7 @@
 
 client_id = "820be92bcc75aaf713759e752ad75226"
 name = "WishKeeper"
-application_url = "https://page-before-sip-skills.trycloudflare.com"
+application_url = "https://deeper-cams-loaded-motivation.trycloudflare.com"
 embedded = true
 
 [build]
@@ -27,7 +27,7 @@ use_legacy_install_flow = false
 
 [auth]
 redirect_urls = [
-  "https://page-before-sip-skills.trycloudflare.com/auth/callback"
+  "https://deeper-cams-loaded-motivation.trycloudflare.com/auth/callback"
 ]
 
 [product.metafields.app.demo_info]
@@ -54,6 +54,6 @@ required = true
 name = "Description"
 type = "multi_line_text_field"
 [app_proxy]
-url = "https://page-before-sip-skills.trycloudflare.com/apps/wishlist"
+url = "https://deeper-cams-loaded-motivation.trycloudflare.com/apps/wishlist"
 subpath = "wishlist"
 prefix = "apps"
