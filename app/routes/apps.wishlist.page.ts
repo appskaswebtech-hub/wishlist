@@ -88,6 +88,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     grid-template-columns: repeat(var(--wl-columns), 1fr);
     gap: 24px;
   }
+//     .card .card__inner:has(.wl-heart-wrap) {
+//     z-index: 10 !important;
+// }
   @media (max-width: 1024px) {
     .wl-grid { grid-template-columns: repeat(3, 1fr); }
   }
@@ -383,9 +386,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         if (s.showTitle !== false) html += '<div class="wl-card-title"><a href="/products/' + p.handle + '">' + esc(p.title) + '</a></div>';
         if (s.showPrice !== false) html += '<div class="wl-card-price">' + money(p.price, p.currency) + '</div>';
         if (s.showAddToCart !== false) {
-          html += p.available
-            ? '<button class="wl-card-atc" onclick="window.__wlAddCart(this, \\'' + item.productId + '\\',\\'' + (item.variantId||'') + '\\')">Add to Cart</button>'
-            : '<button class="wl-card-atc" disabled>Sold Out</button>';
+
         }
         html += '</div></div>';
       });

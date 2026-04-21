@@ -2,6 +2,7 @@
   Wishlist Button - Product Page Block
   Heart icon button with toggle for add/remove.
   Works for both logged-in customers and guests.
+  Updates header badge count on toggle.
 {% endcomment %}
 
 <div
@@ -47,7 +48,6 @@
     position: relative;
   }
 
-  /* ─── Full button style ─── */
   .wl-btn--full {
     padding: 11px 24px;
     border: 1.5px solid #d1d5db;
@@ -68,7 +68,6 @@
     color: var(--wl-active);
   }
 
-  /* ─── Icon only style ─── */
   .wl-btn--icon {
     width: 44px;
     height: 44px;
@@ -88,7 +87,6 @@
     border-color: var(--wl-active);
   }
 
-  /* ─── Shared ─── */
   .wl-btn.active .wl-btn-svg {
     fill: var(--wl-active);
     stroke: var(--wl-active);
@@ -116,93 +114,120 @@
 </style>
 
 <script>
-  (function() {
-    var wrappers = document.querySelectorAll(".wl-btn-wrapper");
+(function() {
+  var wrappers = document.querySelectorAll(".wl-btn-wrapper");
 
-    wrappers.forEach(function(wrapper) {
-      if (wrapper.dataset.initialized) return;
-      wrapper.dataset.initialized = "true";
+  wrappers.forEach(function(wrapper) {
+    if (wrapper.dataset.initialized) return;
+    wrapper.dataset.initialized = "true";
 
-      var btn = wrapper.querySelector(".wl-btn");
-      var textEl = wrapper.querySelector(".wl-btn-text");
-      var productId = wrapper.dataset.productId;
-      var variantId = wrapper.dataset.variantId;
-      var shop = wrapper.dataset.shop;
-      var proxyUrl = wrapper.dataset.proxyUrl;
-      var customerId = wrapper.dataset.customerId;
-      var isGuest = false;
-      var isActive = false;
+    var btn = wrapper.querySelector(".wl-btn");
+    var textEl = wrapper.querySelector(".wl-btn-text");
+    var productId = wrapper.dataset.productId;
+    var variantId = wrapper.dataset.variantId;
+    var shop = wrapper.dataset.shop;
+    var proxyUrl = wrapper.dataset.proxyUrl;
+    var customerId = wrapper.dataset.customerId;
+    var isActive = false;
 
-      var GUEST_KEY = "wishlist_guest_id";
+    var GUEST_KEY = "wishlist_guest_id";
 
-      function getGuestId() {
-        var id = localStorage.getItem(GUEST_KEY);
-        if (!id) {
-          id = "guest_" + crypto.randomUUID();
-          localStorage.setItem(GUEST_KEY, id);
-        }
-        return id;
+    function getGuestId() {
+      var id = localStorage.getItem(GUEST_KEY);
+      if (!id) {
+        id = "guest_" + crypto.randomUUID();
+        localStorage.setItem(GUEST_KEY, id);
       }
+      return id;
+    }
 
-      if (!customerId) {
-        customerId = getGuestId();
-        isGuest = true;
-      } else {
-        var guestId = localStorage.getItem(GUEST_KEY);
-        if (guestId) {
-          fetch(proxyUrl + "/api/wishlist", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ shop: shop, customerId: customerId, guestId: guestId, action: "merge" })
-          }).then(function() { localStorage.removeItem(GUEST_KEY); });
-        }
-      }
-
-      function setActive(active) {
-        isActive = active;
-        btn.classList.toggle("active", active);
-        if (textEl) textEl.textContent = active ? "In Wishlist" : "Add to Wishlist";
-        btn.setAttribute("aria-label", active ? "Remove from wishlist" : "Add to wishlist");
-      }
-
-      // Check initial state
-      fetch(proxyUrl + "/api/wishlist?shop=" + encodeURIComponent(shop) + "&customerId=" + encodeURIComponent(customerId) + "&productId=" + encodeURIComponent(productId) + "&action=check")
-        .then(function(r) { return r.json(); })
-        .then(function(data) { if (data.inWishlist) setActive(true); })
-        .catch(function() {});
-
-      btn.addEventListener("click", function() {
-        btn.classList.add("loading");
-        var action = isActive ? "remove" : "add";
-        setActive(!isActive);
-
+    if (!customerId) {
+      customerId = getGuestId();
+    } else {
+      var guestId = localStorage.getItem(GUEST_KEY);
+      if (guestId) {
         fetch(proxyUrl + "/api/wishlist", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            shop: shop,
-            customerId: customerId,
-            productId: productId,
-            variantId: variantId,
-            action: action
-          })
+          body: JSON.stringify({ shop: shop, customerId: customerId, guestId: guestId, action: "merge" })
+        }).then(function() { localStorage.removeItem(GUEST_KEY); });
+      }
+    }
+
+    function setActive(active) {
+      isActive = active;
+      btn.classList.toggle("active", active);
+      if (textEl) textEl.textContent = active ? "In Wishlist" : "Add to Wishlist";
+      btn.setAttribute("aria-label", active ? "Remove from wishlist" : "Add to wishlist");
+    }
+
+    function updateHeaderBadge(delta) {
+      // Update the header icon badge (id="wl-hdr-badge" from wishlist-header-icon.liquid)
+      var badge = document.getElementById("wl-hdr-badge");
+      if (badge) {
+        var current = parseInt(badge.textContent) || 0;
+        var newCount = Math.max(0, current + delta);
+        badge.textContent = newCount > 99 ? "99+" : newCount;
+        badge.style.display = newCount > 0 ? "block" : "none";
+      }
+      // Sync with collection hearts global state
+      if (window.__wlWishlistedIds) {
+        if (delta > 0) {
+          window.__wlWishlistedIds.add(productId);
+        } else {
+          window.__wlWishlistedIds.delete(productId);
+        }
+      }
+    }
+
+    // Check initial state
+    fetch(proxyUrl + "/api/wishlist?shop=" + encodeURIComponent(shop) + "&customerId=" + encodeURIComponent(customerId) + "&productId=" + encodeURIComponent(productId) + "&action=check")
+      .then(function(r) { return r.json(); })
+      .then(function(data) { if (data.inWishlist) setActive(true); })
+      .catch(function() {});
+
+    btn.addEventListener("click", function() {
+      if (btn.classList.contains("loading")) return;
+      btn.classList.add("loading");
+      var action = isActive ? "remove" : "add";
+      var wasActive = isActive;
+
+      // Optimistic update
+      setActive(!isActive);
+
+      fetch(proxyUrl + "/api/wishlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shop: shop,
+          customerId: customerId,
+          productId: productId,
+          variantId: variantId,
+          action: action
         })
-        .then(function(res) {
-          if (!res.ok) setActive(isActive);
-          // Update header badge count
-          var badge = document.getElementById("wl-header-badge");
-          if (badge) {
-            var current = parseInt(badge.textContent) || 0;
-            var newCount = action === "add" ? current + 1 : Math.max(0, current - 1);
-            badge.textContent = newCount;
-            badge.style.display = newCount > 0 ? "block" : "none";
-          }
-        })
-        .catch(function() { setActive(isActive); })
-        .finally(function() { btn.classList.remove("loading"); });
+      })
+      .then(function(res) {
+        if (!res.ok) {
+          setActive(wasActive);
+        } else {
+          // Update header badge: +1 for add, -1 for remove
+          updateHeaderBadge(action === "add" ? 1 : -1);
+
+          // Sync collection heart buttons on same page if any
+          document.querySelectorAll('[data-wl-product="' + productId + '"]').forEach(function(b) {
+            b.classList.toggle("active", action === "add");
+          });
+        }
+      })
+      .catch(function() {
+        setActive(wasActive);
+      })
+      .finally(function() {
+        btn.classList.remove("loading");
       });
     });
-  })();
+  });
+})();
 </script>
 
 {% schema %}
