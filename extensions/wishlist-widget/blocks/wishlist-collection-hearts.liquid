@@ -194,7 +194,7 @@
     function stop(e) {
       e.preventDefault();
       e.stopPropagation();
-      e.stopImmediatePropagation();
+      // e.stopImmediatePropagation();
     }
 
     btn.addEventListener("click", function(e) {
@@ -209,9 +209,9 @@
       toggleWishlist(btn, productId);
     }, { passive: false, capture: true });
 
-    wrap.addEventListener("click", stop, true);
-    wrap.addEventListener("mousedown", stop, true);
-    wrap.addEventListener("touchstart", stop, { passive: false, capture: true });
+    wrap.addEventListener("click", stop, false);
+    wrap.addEventListener("mousedown", stop, false);
+    wrap.addEventListener("touchstart", stop, { passive: false, capture: false });
 
     wrap.appendChild(btn);
     return wrap;

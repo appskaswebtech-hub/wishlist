@@ -30,7 +30,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     color: var(--wl-text);
   }
 
-  /* ─── Header ─── */
   .wl-header {
     display: flex;
     justify-content: space-between;
@@ -82,15 +81,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     color: var(--wl-primary);
   }
 
-  /* ─── Grid ─── */
   .wl-grid {
     display: grid;
     grid-template-columns: repeat(var(--wl-columns), 1fr);
     gap: 24px;
   }
-//     .card .card__inner:has(.wl-heart-wrap) {
-//     z-index: 10 !important;
-// }
   @media (max-width: 1024px) {
     .wl-grid { grid-template-columns: repeat(3, 1fr); }
   }
@@ -105,7 +100,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     .wl-header { margin-bottom: 24px; padding-bottom: 16px; }
   }
 
-  /* ─── Card ─── */
   .wl-card {
     background: #fff;
     border-radius: var(--wl-radius);
@@ -134,7 +128,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     transform: scale(1.05);
   }
 
-  /* Remove button */
   .wl-card-remove {
     position: absolute;
     top: 8px;
@@ -167,13 +160,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   }
   .wl-card-remove:hover svg { color: #ef4444; }
 
-  /* Mobile: always show remove button */
   @media (max-width: 768px) {
     .wl-card-remove { opacity: 1; transform: scale(1); }
     .wl-card:hover { transform: none; }
   }
 
-  /* Badges */
   .wl-badge-oos {
     position: absolute;
     top: 8px;
@@ -189,10 +180,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     z-index: 2;
   }
 
-  /* Card info */
-  .wl-card-info {
-    padding: 14px;
-  }
+  .wl-card-info { padding: 14px; }
   .wl-card-vendor {
     font-size: 11px;
     text-transform: uppercase;
@@ -256,7 +244,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     .wl-badge-oos { font-size: 9px; padding: 2px 6px; top: 6px; left: 6px; }
   }
 
-  /* ─── Empty State ─── */
   .wl-empty {
     text-align: center;
     padding: 80px 20px;
@@ -285,7 +272,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     .wl-empty p { font-size: 13px; }
   }
 
-  /* ─── Loading / Toast ─── */
   .wl-loading { grid-column: 1 / -1; text-align: center; padding: 80px 20px; }
   .wl-spinner {
     width: 36px; height: 36px;
@@ -386,7 +372,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         if (s.showTitle !== false) html += '<div class="wl-card-title"><a href="/products/' + p.handle + '">' + esc(p.title) + '</a></div>';
         if (s.showPrice !== false) html += '<div class="wl-card-price">' + money(p.price, p.currency) + '</div>';
         if (s.showAddToCart !== false) {
-
+          var atcDisabled = !p.available ? ' disabled' : '';
+          var varId = item.variantId || '';
+          html += '<button class="wl-card-atc"' + atcDisabled + ' onclick="window.__wlAddCart(this,\\'' + item.productId + '\\',\\'' + varId + '\\',\\'' + p.handle + '\\')">' + (p.available ? 'ADD TO CART' : 'SOLD OUT') + '</button>';
         }
         html += '</div></div>';
       });
@@ -410,14 +398,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   function money(a, c) { return new Intl.NumberFormat("en-US", { style: "currency", currency: c || "USD" }).format(parseFloat(a)); }
   function toast(m) { var t = document.getElementById("wl-toast"); t.textContent = m; t.classList.add("show"); setTimeout(function() { t.classList.remove("show"); }, 2500); }
 
-  /* ─── Update Shopify cart count in header (works with Dawn & most themes) ─── */
   function refreshCartBubble() {
     fetch("/cart.js")
       .then(function(r) { return r.json(); })
       .then(function(cart) {
         var count = cart.item_count;
-
-        // Method 1: Direct DOM update for common selectors
         var bubbleSelectors = [
           ".cart-count-bubble span[aria-hidden]",
           ".cart-count-bubble span",
@@ -431,13 +416,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
             el.textContent = count;
           });
         });
-
-        // Show/hide the bubble itself
         document.querySelectorAll(".cart-count-bubble").forEach(function(el) {
           el.style.display = count > 0 ? "" : "none";
         });
-
-        // Method 2: Dawn theme section rendering API (re-renders the header section)
         var headerSection = document.querySelector('.shopify-section-header, [data-section-type="header"], .shopify-section.section-header');
         if (headerSection) {
           var sectionId = headerSection.id ? headerSection.id.replace("shopify-section-", "") : "header";
@@ -447,7 +428,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
               for (var key in sections) {
                 var tmp = document.createElement("div");
                 tmp.innerHTML = sections[key];
-                // Update just the cart bubble, not the whole header
                 var newBubble = tmp.querySelector(".cart-count-bubble");
                 var oldBubble = document.querySelector(".cart-count-bubble");
                 if (newBubble && oldBubble) {
@@ -462,7 +442,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       .catch(function() {});
   }
 
-  /* ─── Remove from wishlist ─── */
   window.__wlRemove = function(pid, vid) {
     var card = document.querySelector('[data-product-id="' + pid + '"]');
     if (card) card.classList.add("removing");
@@ -477,8 +456,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         if (rem === 0) showEmpty();
       }, 300);
       toast("Removed from wishlist");
-
-      // Update wishlist header badge
       var badge = document.getElementById("wl-hdr-badge");
       if (badge) {
         var current = parseInt(badge.textContent) || 0;
@@ -492,41 +469,162 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     });
   };
 
-  /* ─── Add to cart with feedback + header cart count update ─── */
-  window.__wlAddCart = function(btnEl, pid, vid) {
-    var id = vid || pid;
-    btnEl.disabled = true;
-    btnEl.textContent = "Adding...";
+  // window.__wlAddCart = function(btnEl, pid, vid, handle) {
+  //   btnEl.disabled = true;
+  //   btnEl.textContent = "Adding...";
 
+  //   function doAdd(variantId) {
+  //       fetch("/cart/add.js", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ items: [{ id: parseInt(variantId), quantity: 1 }] })
+  //     })
+  //     .then(function(r) {
+  //       if (!r.ok) throw new Error("Failed with status " + r.status);
+  //       return r.json();
+  //     })
+  //     .then(function(cartData) {
+  //       btnEl.textContent = "Added!";
+  //       btnEl.classList.add("added");
+  //       toast("Added to cart!");
+  //       refreshCartBubble();
+
+  //       var drawerSection = document.querySelector('#cart-drawer, cart-drawer, .cart-drawer');
+  //       if (drawerSection) {
+  //         var sectionEl = drawerSection.closest('.shopify-section');
+  //         var sectionId = (sectionEl && sectionEl.id) ? sectionEl.id.replace('shopify-section-', '') : 'cart-drawer';
+  //         fetch('/?sections=' + sectionId)
+  //           .then(function(r) { return r.json(); })
+  //           .then(function(sections) {
+  //             for (var key in sections) {
+  //               var wrapper = document.getElementById('shopify-section-' + key);
+  //               if (wrapper) {
+  //                 wrapper.innerHTML = sections[key];
+  //               }
+  //             }
+  //             var cartBtn = document.querySelector('a[href="/cart"], [data-cart-toggle], #cart-icon-bubble, button[aria-controls="cart-drawer"], .js-drawer-open-right');
+  //             if (cartBtn) cartBtn.click();
+  //           })
+  //           .catch(function() {});
+  //       } else {
+  //         var cartBtn = document.querySelector('a[href="/cart"], [data-cart-toggle], #cart-icon-bubble, button[aria-controls="cart-drawer"], .js-drawer-open-right');
+  //         if (cartBtn) cartBtn.click();
+  //       }
+
+  //       document.dispatchEvent(new CustomEvent('cart:updated', { detail: cartData }));
+  //       document.dispatchEvent(new CustomEvent('cart-updated', { detail: cartData }));
+  //       window.dispatchEvent(new CustomEvent('cart:updated'));
+
+  //       setTimeout(function() {
+  //         btnEl.textContent = "ADD TO CART";
+  //         btnEl.classList.remove("added");
+  //         btnEl.disabled = false;
+  //       }, 2000);
+  //     })
+  //     .catch(function(err) {
+  //       console.error("Cart add failed:", err);
+  //       btnEl.textContent = "ADD TO CART";
+  //       btnEl.disabled = false;
+  //       toast("Could not add to cart");
+  //     });
+  //   }
+
+  //   if (vid && vid !== '' && vid !== 'null' && vid !== 'undefined') {
+  //     doAdd(vid);
+  //   } else {
+  //     fetch("/products/" + handle + ".json")
+  //       .then(function(r) { return r.json(); })
+  //       .catch(function() { return null; })
+  //       .then(function(data) {
+  //         if (!data || !data.product || !data.product.variants || !data.product.variants.length) {
+  //           btnEl.textContent = "ADD TO CART";
+  //           btnEl.disabled = false;
+  //           toast("Could not add to cart");
+  //           return;
+  //         }
+  //         var variant = data.product.variants.find(function(v) { return v.available; }) || data.product.variants[0];
+  //         doAdd(variant.id);
+  //       });
+  //   }
+  // };
+
+ window.__wlAddCart = function(btnEl, pid, vid, handle) {
+  btnEl.disabled = true;
+  btnEl.textContent = "Adding...";
+
+  function setOpenFlag() {
+    try {
+      sessionStorage.setItem("wl_open_cart", "1");
+    } catch (e) {}
+  }
+
+  function doAdd(variantId) {
     fetch("/cart/add.js", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items: [{ id: parseInt(id), quantity: 1 }] })
+      body: JSON.stringify({
+        items: [{ id: parseInt(variantId), quantity: 1 }]
+      })
     })
-    .then(function(r) {
-      if (!r.ok) throw new Error("Failed");
-      return r.json();
+    .then(function(res) {
+      if (!res.ok) throw new Error("Add failed");
+      return res.json();
     })
     .then(function() {
-      btnEl.textContent = "Added!";
-      btnEl.classList.add("added");
-      toast("Added to cart!");
-      refreshCartBubble();
-      // Reset button after 2s
-      setTimeout(function() {
-        btnEl.textContent = "ADD TO CART";
-        btnEl.classList.remove("added");
-        btnEl.disabled = false;
-      }, 2000);
+      setOpenFlag();
+      // 🔥 Always reload (your requirement)
+      location.reload();
     })
-    .catch(function() {
-      btnEl.textContent = "ADD TO CART";
+    .catch(function(err) {
+      console.error(err);
       btnEl.disabled = false;
-      toast("Could not add to cart");
+      btnEl.textContent = "ADD TO CART";
+      if (typeof toast === "function") {
+        toast("Could not add to cart");
+      }
     });
-  };
+  }
 
-  /* ─── Share ─── */
+  if (vid && vid !== '' && vid !== 'null' && vid !== 'undefined') {
+    doAdd(vid);
+  } else {
+    fetch("/products/" + handle + ".json")
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data?.product?.variants?.length) {
+          btnEl.disabled = false;
+          btnEl.textContent = "ADD TO CART";
+          return;
+        }
+        var variant =
+          data.product.variants.find(v => v.available) ||
+          data.product.variants[0];
+
+        doAdd(variant.id);
+      })
+      .catch(function() {
+        btnEl.disabled = false;
+        btnEl.textContent = "ADD TO CART";
+      });
+  }
+};
+
+document.addEventListener("DOMContentLoaded", function() {
+  try {
+    if (sessionStorage.getItem("wl_open_cart") === "1") {
+      sessionStorage.removeItem("wl_open_cart");
+
+      const btn = document.querySelector(
+        'a[href="/cart"], [data-cart-toggle], #cart-icon-bubble, button[aria-controls="cart-drawer"], .js-drawer-open-right'
+      );
+
+      if (btn) {
+        // small delay ensures theme JS is ready
+        setTimeout(() => btn.click(), 300);
+      }
+    }
+  } catch (e) {}
+});
   window.__wlShare = function() {
     if (navigator.share) navigator.share({ title: "My Wishlist", url: location.href });
     else if (navigator.clipboard) { navigator.clipboard.writeText(location.href); toast("Link copied!"); }
