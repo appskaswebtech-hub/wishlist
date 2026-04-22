@@ -2,7 +2,7 @@
 
 client_id = "820be92bcc75aaf713759e752ad75226"
 name = "WishKeeper"
-application_url = "https://posts-posts-smallest-urban.trycloudflare.com"
+application_url = "https://wishkeeper.kaswebtechsolutions.com"
 embedded = true
 
 [build]
@@ -30,10 +30,10 @@ optional_scopes = [ ]
 use_legacy_install_flow = false
 
 [auth]
-redirect_urls = [ "https://posts-posts-smallest-urban.trycloudflare.com/auth/callback" ]
+redirect_urls = [ "https://wishkeeper.kaswebtechsolutions.com/auth/callback" ]
 
 [app_proxy]
-url = "https://posts-posts-smallest-urban.trycloudflare.com/apps/wishlist"
+url = "https://wishkeeper.kaswebtechsolutions.com/apps/wishlist"
 subpath = "wishlist"
 prefix = "apps"
 
