@@ -570,12 +570,11 @@ window.__wlRemove = function(pid, vid) {
 
 btnEl.textContent = "Added!";
 btnEl.classList.add("added");
-window.__wlRemove(pid, variantId);
 
 // Remove from wishlist after adding to cart
-var card = btnEl.closest(".wl-card");
-var productId = card ? card.getAttribute("data-product-id") : pid;
-window.__wlRemove(productId, variantId);
+setTimeout(function() {
+  window.__wlRemove(pid, vid || variantId);
+}, 1000);
       })
       .catch(function (err) {
         console.error(err);
