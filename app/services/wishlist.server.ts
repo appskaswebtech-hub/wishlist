@@ -83,11 +83,26 @@ export async function getWishlistCount(storeId: string, customerId: string) {
   return prisma.wishlistItem.count({ where: { wishlistId: wishlist.id } });
 }
 
+// Plan-based limits
+const PLAN_LIMITS: Record<string, number> = {
+  basic: 10,
+  pro: 20,
+  advanced: 30,
+  none: 0,
+};
+
+export async function getPlanLimit(shop: string): Promise<number> {
+  const shopPlan = await prisma.shopPlan.findUnique({ where: { shop } });
+  if (!shopPlan) return 0;
+  return PLAN_LIMITS[shopPlan.plan] ?? 0;
+}
+
 export async function addWishlistItem(
   storeId: string,
   customerId: string,
   productId: string,
-  variantId?: string | null
+  variantId?: string | null,
+  shop?: string
 ) {
   const wishlist = await getWishlist(storeId, customerId);
 
@@ -96,12 +111,16 @@ export async function addWishlistItem(
   });
   if (existing) return existing;
 
-  const settings = await prisma.storeSettings.findUnique({ where: { storeId } });
-  const maxItems = settings?.maxItemsPerList ?? 50;
-  const currentCount = await prisma.wishlistItem.count({ where: { wishlistId: wishlist.id } });
+  // Enforce plan limit if shop is provided
+  if (shop) {
+    const maxItems = await getPlanLimit(shop);
+    const currentCount = await prisma.wishlistItem.count({
+      where: { wishlistId: wishlist.id },
+    });
 
-  if (currentCount >= maxItems) {
-    throw new Error(`Wishlist is full. Maximum ${maxItems} items allowed.`);
+    if (currentCount >= maxItems) {
+      throw new Error(`PLAN_LIMIT_EXCEEDED:${maxItems}`);
+    }
   }
 
   return prisma.wishlistItem.create({

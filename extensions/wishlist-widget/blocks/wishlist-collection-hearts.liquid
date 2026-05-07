@@ -9,12 +9,14 @@
 
 <style>
    .wl-heart-wrap {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    z-index: 100;
-    pointer-events: auto;
-  }
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1000;
+  pointer-events: auto;
+  display: block;
+}
+
   .wl-heart-btn {
     width: {{ block.settings.icon_size }}px;
     height: {{ block.settings.icon_size }}px;
@@ -64,6 +66,25 @@
     100% { transform: scale(1); }
   }
 
+.card__media {
+  pointer-events: none;
+}
+.card__media .wl-heart-wrap,
+.card__media .wl-heart-btn {
+  pointer-events: auto !important;
+}
+
+
+
+/* Re-enable pointer events on the heart wrap */
+.wl-heart-wrap {
+  pointer-events: auto !important;
+  z-index: 99999 !important;
+}
+.wl-heart-btn {
+  pointer-events: auto !important;
+  z-index: 99999 !important;
+}
   /* Ensure product cards have relative positioning for the absolute heart */
   .product-card-wrapper,
   .grid__item .card-wrapper,
@@ -191,30 +212,52 @@
     btn.setAttribute("data-wl-product", productId);
     btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><' + iconTag + ' ' + iconAttr + '="' + iconPath + '"/></svg>';
 
-    function stop(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      // e.stopImmediatePropagation();
-    }
+  function stop(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+}
 
-    btn.addEventListener("click", function(e) {
-      stop(e);
-      toggleWishlist(btn, productId);
+btn.addEventListener("pointerdown", function(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+  toggleWishlist(btn, productId);
+}, true);
+
+btn.addEventListener("click", function(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+}, true);
+
+
+
+// Block the parent anchor from firing
+wrap.style.pointerEvents = "auto";
+wrap.addEventListener("click", function(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+}, true);
+
+   // Find and block the parent anchor link
+setTimeout(function() {
+  var parentLink = wrap.closest('a[href*="/products/"]');
+  if (!parentLink) parentLink = wrap.parentElement && wrap.parentElement.closest('a[href*="/products/"]');
+  if (parentLink) {
+    parentLink.addEventListener("click", function(e) {
+      if (e.target === btn || btn.contains(e.target) || e.target === wrap || wrap.contains(e.target)) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+      }
     }, true);
-    btn.addEventListener("mousedown", stop, true);
-    btn.addEventListener("mouseup", stop, true);
-    btn.addEventListener("touchstart", stop, { passive: false, capture: true });
-    btn.addEventListener("touchend", function(e) {
-      stop(e);
-      toggleWishlist(btn, productId);
-    }, { passive: false, capture: true });
+  }
+}, 100);
 
-    wrap.addEventListener("click", stop, false);
-    wrap.addEventListener("mousedown", stop, false);
-    wrap.addEventListener("touchstart", stop, { passive: false, capture: false });
-
-    wrap.appendChild(btn);
-    return wrap;
+wrap.appendChild(btn);
+return wrap;
   }
   // ─── Toggle wishlist ──────────────────────────────────────────────
 
@@ -237,21 +280,25 @@
         action: action
       })
     })
-    .then(function(res) {
-      if (!res.ok) {
-        // Revert
-        btn.classList.toggle("active");
-      } else {
-        if (action === "add") {
-          wishlistedIds.add(productId);
+ .then(function(res) {
+      return res.json().then(function(data) {
+        if (!res.ok) {
+          // Revert optimistic update
+          btn.classList.toggle("active");
+          if (res.status === 403 && data.error === "PLAN_LIMIT_EXCEEDED") {
+            showToast(data.message, "error");
+          }
         } else {
-          wishlistedIds.delete(productId);
+          if (action === "add") {
+            wishlistedIds.add(productId);
+          } else {
+            wishlistedIds.delete(productId);
+          }
+          updateHeaderBadge();
+          syncButtons(productId, action === "add");
+          showToast(action === "add" ? "Added to wishlist!" : "Removed from wishlist!", "success");
         }
-        // Update header badge
-        updateHeaderBadge();
-        // Sync all buttons for same product on page
-        syncButtons(productId, action === "add");
-      }
+      });
     })
     .catch(function() {
       btn.classList.toggle("active");
@@ -269,6 +316,46 @@
       btns[i].classList.toggle("active", isActive);
     }
   }
+
+
+// ─── Toast notification ───────────────────────────────────────────
+
+  function showToast(message, type) {
+    var existing = document.getElementById("wl-toast");
+    if (existing) existing.remove();
+
+    var toast = document.createElement("div");
+    toast.id = "wl-toast";
+    toast.textContent = message;
+    toast.style.cssText = [
+      "position: fixed",
+      "bottom: 24px",
+      "left: 50%",
+      "transform: translateX(-50%)",
+      "background: " + (type === "error" ? "#e74c3c" : "#2ecc71"),
+      "color: #fff",
+      "padding: 12px 24px",
+      "border-radius: 8px",
+      "font-size: 14px",
+      "font-weight: 500",
+      "z-index: 999999",
+      "box-shadow: 0 4px 12px rgba(0,0,0,0.15)",
+      "transition: opacity 0.3s ease",
+      "opacity: 1",
+    ].join(";");
+
+    document.body.appendChild(toast);
+
+    setTimeout(function() {
+      toast.style.opacity = "0";
+      setTimeout(function() { toast.remove(); }, 300);
+    }, 3000);
+  }
+
+  // ─── Update header badge count ────────────────────────────────────
+
+  function updateHeaderBadge() {
+
 
   // ─── Update header badge count ────────────────────────────────────
 
@@ -308,14 +395,22 @@
             processed++;
             if (productId) {
               var isActive = wishlistedIds.has(productId);
-              var heart = createHeartButton(productId, isActive);
-              card.imgWrap.appendChild(heart);
+            var heart = createHeartButton(productId, isActive);
+var appendTo = card.container;
+appendTo.style.position = "relative";
+heart.style.position = "absolute";
+heart.style.top = "8px";
+heart.style.right = "8px";
+heart.style.zIndex = "9999";
+appendTo.appendChild(heart);
             }
           });
         });
 
         // Update header badge
-        updateHeaderBadge();
+updateHeaderBadge();
+
+
       })
       .catch(function() {});
   }

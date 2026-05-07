@@ -84,3 +84,16 @@ model WishlistItem {
   @@unique([wishlistId, productId, variantId])
   @@index([wishlistId])
 }
+
+model ShopPlan {
+  id               String    @id @default(uuid())
+  shop             String    @unique
+  plan             String    @default("none")
+  subscriptionId   String?
+  status           String    @default("active")
+  billingStartedAt DateTime?
+  trialEndsAt      DateTime?
+  wishlistCount    Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}

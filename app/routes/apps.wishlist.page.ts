@@ -398,12 +398,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   function money(a, c) { return new Intl.NumberFormat("en-US", { style: "currency", currency: c || "USD" }).format(parseFloat(a)); }
   function toast(m) { var t = document.getElementById("wl-toast"); t.textContent = m; t.classList.add("show"); setTimeout(function() { t.classList.remove("show"); }, 2500); }
 
-  window.__wlRemove = function(pid, vid) {
+window.__wlRemove = function(pid, vid) {
     var card = document.querySelector('[data-product-id="' + pid + '"]');
     if (card) card.classList.add("removing");
     fetch(proxyUrl + "/api/wishlist", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ shop: shop, customerId: customerId, productId: pid, variantId: vid || null, action: "remove" })
+    }).then(function(res) {
+      if (!res.ok) throw new Error("Remove failed");
+      return res.json();
     }).then(function() {
       setTimeout(function() {
         if (card) card.remove();
@@ -540,12 +543,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
             syncCartBubble();
 
             /* --------- OPEN CART DRAWER --------- */
-            setTimeout(function () {
-              var btn = document.querySelector(
-                'a[href="/cart"], [data-cart-toggle], #cart-icon-bubble, button[aria-controls="cart-drawer"]'
-              );
-              if (btn) btn.click();
-            }, 150);
+            // setTimeout(function () {
+            //   var btn = document.querySelector(
+            //     'a[href="/cart"], [data-cart-toggle], #cart-icon-bubble, button[aria-controls="cart-drawer"]'
+            //   );
+            //   if (btn) btn.click();
+            // }, 150);
 
           })
           .catch(function (err) {
@@ -565,8 +568,14 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
            UI FEEDBACK
         ========================= */
 
-        btnEl.textContent = "Added!";
-        btnEl.classList.add("added");
+btnEl.textContent = "Added!";
+btnEl.classList.add("added");
+window.__wlRemove(pid, variantId);
+
+// Remove from wishlist after adding to cart
+var card = btnEl.closest(".wl-card");
+var productId = card ? card.getAttribute("data-product-id") : pid;
+window.__wlRemove(productId, variantId);
       })
       .catch(function (err) {
         console.error(err);

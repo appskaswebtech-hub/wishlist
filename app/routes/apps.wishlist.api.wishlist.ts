@@ -58,7 +58,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 
   const body = await request.json();
-  const { shop, customerId, productId, variantId, action } = body;
+  console.log("REMOVE REQUEST BODY:", JSON.stringify(body));
+  const { shop, productId, variantId, action } = body;
+  const customerId = String(body.customerId);
+  console.log("CUSTOMER ID AS STRING:", customerId);
 
   if (!shop || !customerId) {
     return json({ error: "Missing shop or customerId" }, { status: 400, headers: cors });
@@ -73,8 +76,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     switch (action) {
       case "add": {
         if (!productId) return json({ error: "Missing productId" }, { status: 400, headers: cors });
-        const item = await addWishlistItem(store.id, customerId, productId, variantId);
-        return json({ success: true, item }, { headers: cors });
+        try {
+          const item = await addWishlistItem(store.id, customerId, productId, variantId, shop);
+          return json({ success: true, item }, { headers: cors });
+        } catch (err: any) {
+          if (err.message?.startsWith("PLAN_LIMIT_EXCEEDED")) {
+            const limit = err.message.split(":")[1];
+            return json(
+              { error: "PLAN_LIMIT_EXCEEDED", limit: Number(limit), message: `You have reached your plan limit of ${limit} wishlist items. Please upgrade your plan.` },
+              { status: 403, headers: cors }
+            );
+          }
+          throw err;
+        }
       }
       case "remove": {
         if (!productId) return json({ error: "Missing productId" }, { status: 400, headers: cors });
